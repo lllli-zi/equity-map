@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>公司股权关系图谱</title>
+<style>
+  :root{
+    --ink:#0f172a; --sub:#475569; --faint:#94a3b8;
+    --a:#2563EB; --a-t:#EFF6FF; --a-l:#93C5FD;
+    --b:#16A34A; --b-t:#F0FDF4; --b-l:#86EFAC;
+    --c:#DB2777; --c-t:#FDF2F8; --c-l:#F9A8D4;
+    --d:#7C3AED; --d-t:#F5F3FF; --d-l:#C4B5FD;
+    --e:#D97706; --e-t:#FFFBEB; --e-l:#FCD34D;
+    --f:#0D9488; --f-t:#F0FDFA; --f-l:#5EEAD4;
+    --bar:52px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+    color:var(--ink);background:#f8fafc;line-height:1.6;overflow:hidden;
+  }
+
+  /* ---------- 顶部一条状态栏 ---------- */
+  .topbar{position:fixed;top:0;left:0;right:0;height:var(--bar);display:flex;align-items:center;gap:12px;
+    background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-bottom:1px solid #e2e8f0;z-index:100;padding:0 14px}
+  .topbar .brand{font-size:15px;font-weight:800;white-space:nowrap;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+  .topbar .brand::before{content:"";width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#2563EB,#16A34A)}
+  .topbar nav{flex:1;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+  .topbar nav::-webkit-scrollbar{display:none}
+  .topbar nav a{flex:none;font-size:12.5px;color:var(--sub);text-decoration:none;padding:6px 11px;border-radius:999px;
+    white-space:nowrap;cursor:pointer;transition:background .12s,color .12s}
+  .topbar nav a:hover{color:var(--ink);background:#f1f5f9}
+  .topbar nav a.on{color:#fff;background:var(--ink);font-weight:700}
+  .topbar nav a .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:1px}
+  .topbar .btns{display:flex;gap:6px;flex:none}
+  .topbar .btns button{background:#fff;border:1px solid #e2e8f0;border-radius:999px;font-size:12px;font-weight:700;
+    color:var(--sub);padding:5px 12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .topbar .btns button:hover{color:var(--ink);border-color:var(--faint)}
+
+  /* ---------- 横向切换面板 ---------- */
+  .viewport{position:fixed;top:var(--bar);left:0;right:0;bottom:0;overflow:hidden}
+  .panels{display:flex;height:100%;transition:transform .35s cubic-bezier(.22,.61,.36,1)}
+  .panel{flex:0 0 100%;height:100%;overflow-y:auto;padding:26px 22px 70px}
+  .navbtn{position:fixed;top:50%;transform:translateY(-50%);z-index:90;width:42px;height:42px;border-radius:50%;
+    background:rgba(255,255,255,.9);border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(15,23,42,.14);
+    font-size:19px;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none}
+  .navbtn:hover{color:var(--ink);background:#fff}
+  .navbtn.prev{left:12px} .navbtn.next{right:12px}
+  .navbtn[hidden]{display:none}
+  .pager{position:fixed;right:16px;bottom:14px;z-index:90;font-size:12px;font-weight:700;color:var(--sub);
+    background:rgba(255,255,255,.92);border:1px solid #e2e8f0;border-radius:999px;padding:3px 12px}
+
+    padding:30px 26px 26px;text-align:center;margin-bottom:20px}
+
+
+
+
+
+  h2.sec{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  h2.sec .no{width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;display:inline-flex;align-items:center;justify-content:center;font-weight:800}
+  p.secdesc{color:var(--sub);font-size:13.5px;margin-bottom:16px;max-width:900px}
+
+
+  /* ---------- 总览体系列表 ---------- */
+  .syslist{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-top:18px}
+  a.srow{display:flex;align-items:baseline;gap:18px;padding:13px 18px;border-bottom:1px solid #f1f5f9;cursor:pointer;text-decoration:none;color:inherit;flex-wrap:wrap}
+  a.srow:last-child{border-bottom:none}
+  a.srow:hover{background:#f8fafc}
+  .srow .pdot2{width:9px;height:9px;border-radius:50%;flex:none;align-self:center}
+  .srow .sname{font-weight:800;font-size:13.5px;min-width:178px}
+  .srow .score{font-size:12px;color:var(--acc);font-weight:700;min-width:248px}
+  .srow .sdesc{flex:1;min-width:240px;font-size:11.5px;color:var(--sub);padding-right:10px}
+  .srow .scnt{font-size:11px;color:var(--faint);white-space:nowrap;align-self:center;margin-left:auto}
+  .panorama{margin-top:18px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 14px 10px}
+  .panorama h3{font-size:15px;font-weight:800;margin:0 4px 8px}
+  .panorama svg{width:100%;height:auto;display:block}
+  .panorama .cap{font-size:11.5px;color:var(--faint);text-align:center;margin-top:6px}
+
+  .legend{margin-top:20px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 18px;font-size:12.5px;color:var(--sub);display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+  .legend .it{display:inline-flex;align-items:center;gap:7px}
+  .lg{display:inline-block;width:26px;height:15px;border-radius:5px;border:1.5px solid var(--faint);background:#fff}
+  .lg.core{border-width:2.5px;border-color:var(--a);background:var(--a-t)}
+  .lg.pt{border-color:var(--b-l)}
+  .lg.ext{border-style:dashed;border-color:var(--faint);background:#f8fafc}
+  .lg.x{border-style:dashed;border-color:var(--a-l)}
+  .lg.psn{width:18px;border-radius:999px;background:#FEF3C7;border-color:#F59E0B}
+
+  /* ---------- 体系区块 ---------- */
+  .sysbox{border-radius:18px;padding:22px 20px;border:1.5px solid var(--ln);background:var(--tint);position:relative}
+  .sysA{--acc:var(--a);--tint:#fbfdff;--ln:var(--a-l)}
+  .sysA2{--acc:var(--a);--tint:var(--a-t);--ln:var(--a-l)}
+  .sysB{--acc:var(--b);--tint:#fbfffc;--ln:var(--b-l)}
+  .sysB2{--acc:var(--b);--tint:var(--b-t);--ln:var(--b-l)}
+  .sysC{--acc:var(--c);--tint:var(--c-t);--ln:var(--c-l)}
+  .sysD{--acc:var(--d);--tint:var(--d-t);--ln:var(--d-l)}
+  .sysE1{--acc:var(--e);--tint:var(--e-t);--ln:var(--e-l)}
+  .sysE2{--acc:var(--f);--tint:var(--f-t);--ln:var(--f-l)}
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;color:#fff;background:var(--acc);border-radius:999px;padding:2px 11px;vertical-align:3px;margin-left:8px}
+  button.exp{position:absolute;right:14px;top:12px;z-index:5;background:#fff;border:1px solid #e2e8f0;border-radius:999px;font-size:11.5px;font-weight:700;color:var(--sub);padding:4px 12px;cursor:pointer;font-family:inherit}
+  button.exp:hover{color:var(--ink);border-color:var(--faint)}
+
+  .subh{font-size:15px;font-weight:800;margin:20px 0 4px;display:flex;align-items:center;gap:8px}
+  .subh .sq{width:10px;height:10px;border-radius:3px;background:var(--acc)}
+  .subdesc{font-size:12.5px;color:var(--sub);margin-bottom:10px}
+
+  /* ---------- 结构图 ---------- */
+  .diagram{position:relative;margin-top:6px;padding:14px 6px 6px;overflow:hidden}
+  .diagram svg.edges{position:absolute;left:0;top:0;pointer-events:none;z-index:0}
+  .edges path{transition:stroke-opacity .15s ease, stroke-width .15s ease}
+  .diagram.dim .edges path{stroke-opacity:.14}
+  .diagram.dim .edges path.hl{stroke-opacity:1;stroke-width:3}
+  .node, .hold{cursor:default}
+  .rows{position:relative;z-index:1;display:flex;flex-direction:column;gap:62px;align-items:center}
+  .row{display:flex;justify-content:center;align-items:flex-start;gap:26px;flex-wrap:wrap}
+
+  .node{position:relative;width:216px;background:#fff;border:1.5px solid var(--ln);border-radius:12px;padding:11px 13px;box-shadow:0 1px 4px rgba(15,23,42,.07)}
+  .node .nm{font-weight:800;font-size:13px;line-height:1.4;margin-bottom:6px}
+  .node .meta{font-size:11.5px;color:var(--sub);line-height:1.65}
+  .node .meta i{font-style:normal;color:var(--faint);margin-right:6px}
+  .node.core{border:2.5px solid var(--acc);background:#fff;box-shadow:0 3px 12px rgba(15,23,42,.10)}
+  .nt-core{background:#0f172a;color:#fff;letter-spacing:1px}
+  .holdgrp{position:absolute;top:-22px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:3;white-space:nowrap}
+  .hold{background:#fff;border:1.5px solid var(--ec,#2563EB);color:var(--ec,#2563EB);font-size:11px;font-weight:800;line-height:17px;padding:0 7px;border-radius:999px;box-shadow:0 1px 3px rgba(15,23,42,.18)}
+  .diagram[data-color=blue]{--ec:#2563EB}
+  .diagram[data-color=green]{--ec:#16A34A}
+  .diagram[data-color=rose]{--ec:#DB2777}
+  .diagram[data-color=violet]{--ec:#7C3AED}
+  .diagram[data-color=amber]{--ec:#D97706}
+  .diagram[data-color=teal]{--ec:#0D9488}
+  .node.person{width:140px;text-align:center;padding:12px 10px}
+  .node.person .nm{margin-bottom:2px;font-size:14px}
+  .node.ext{border-style:dashed;border-color:var(--faint);background:#f8fafc;box-shadow:none}
+  .node.xa{border-style:dashed;border-color:var(--a-l)}
+  .node.xb{border-style:dashed;border-color:var(--b-l)}
+  .node .xb{position:absolute;top:-10px;right:10px;font-size:10px;font-weight:800;color:#fff;border-radius:999px;padding:1px 9px}
+  .node .xb.a{background:var(--a)} .node .xb.b{background:var(--b)}
+  .nt{display:inline-block;font-size:10px;font-weight:800;padding:1px 8px;border-radius:5px;margin-bottom:6px;letter-spacing:.5px}
+  .nt-ltd{background:#E0E7FF;color:#3730A3}
+  .nt-lp{background:#FFEDD5;color:#9A3412}
+  .nt-psn{background:#FEF3C7;color:#92400E}
+  .nt-ext{background:#F1F5F9;color:#64748B}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  .chip{font-size:10.5px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:1px 7px;color:#334155}
+  .chip b{color:var(--ink)}
+  .chip.extc{background:#f8fafc;color:var(--faint);border-style:dashed}
+  .xchip{font-size:10.5px;background:#FEF3C7;border:1px dashed #D97706;border-radius:6px;padding:1px 7px;color:#92400E;font-weight:700}
+
+  .node.linked{border-color:#F59E0B!important;box-shadow:0 0 0 3px rgba(245,158,11,.35)!important}
+  tr.linked td{background:#FEF9C3}
+
+  /* ---------- 全景图内跨体系图注 ---------- */
+  .xnotes{margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0}
+  .xnotes .xt{font-size:12px;font-weight:800;color:#334155;margin-bottom:4px}
+  .xnotes .xr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:3px 0}
+  .xnotes .pdot2{width:8px;height:8px;border-radius:50%;flex:none}
+  .xnotes .xn{font-weight:700}
+  .xnotes .xn small{font-weight:400;color:var(--faint);font-size:11px;margin-left:4px}
+  .xnotes .xa{font-size:11.5px;font-weight:800;color:#92400E;background:#FEF3C7;border-radius:999px;padding:1px 10px;white-space:nowrap}
+
+  /* ---------- 关键人物 ---------- */
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .pcard{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px}
+  .pcard .pname{font-size:17px;font-weight:800}
+  .pcard .prole{font-size:12px;color:var(--faint);margin:2px 0 10px}
+  .pcard .pi{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:5px 0;border-top:1px dashed #f1f5f9}
+  .pcard .pi .pdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .pcard .pi .po{margin-left:auto;color:var(--faint);font-size:11.5px;white-space:nowrap}
+  #pnote{margin-top:12px;font-size:12.5px;color:var(--sub)}
+
+  /* ---------- 速查表 ---------- */
+  .toolrow{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  #q{flex:1;min-width:200px;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 14px;font-size:13.5px;font-family:inherit;outline:none}
+  #q:focus{border-color:var(--a)}
+  select.fsel{border:1.5px solid #e2e8f0;border-radius:10px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--sub);outline:none;background:#fff}
+  #qinfo{font-size:12.5px;color:var(--faint)}
+  .tablewrap{overflow-x:auto;background:#fff;border:1px solid #e2e8f0;border-radius:14px}
+  table{border-collapse:collapse;width:100%;min-width:1120px;font-size:12.5px}
+  thead th{background:#f1f5f9;color:#334155;font-weight:700;text-align:left;padding:10px 12px;border-bottom:1.5px solid #e2e8f0;white-space:nowrap}
+  tbody td{padding:9px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tbody tr:hover{background:#f8fafc}
+  td.nm{font-weight:700;white-space:nowrap}
+  td.num,th.no{color:var(--faint);text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .syspill{display:inline-block;font-size:11px;font-weight:800;color:#fff;border-radius:6px;padding:1px 8px}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--sub)}
+
+  /* ---------- 说明 ---------- */
+  .notes{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px}
+  .notes ol{padding-left:20px}
+  .notes li{font-size:13px;color:var(--sub);margin:7px 0}
+  footer{text-align:center;color:var(--faint);font-size:12px;padding:26px 16px 10px;margin-top:30px}
+
+  /* ---------- 导出整页时的临时展开 ---------- */
+  body.export-all{overflow:visible}
+  body.export-all .viewport{position:static;overflow:visible;height:auto}
+  body.export-all .panels{display:block;transform:none!important;height:auto;transition:none}
+  body.export-all .panel{display:block;height:auto;overflow:visible}
+
+  /* ---------- 登录门 ---------- */
+  #gate{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 60%,#2563eb 100%)}
+  #gate[hidden]{display:none!important}
+  #gate .gcard{background:#fff;border-radius:18px;padding:34px 34px 26px;width:min(360px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.45);animation:gin .3s ease}
+  @keyframes gin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+  #gate .gcard.err{animation:shake .3s ease}
+  #gate .glogo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#2563EB,#16A34A);margin:0 auto 14px}
+  #gate h1{font-size:19px;font-weight:800;text-align:center;letter-spacing:1px}
+  #gate .gsub{font-size:12px;color:#94a3b8;text-align:center;margin:4px 0 20px}
+  #gate .gi{width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px}
+  #gate .gi:focus{border-color:var(--a)}
+  #gate .grem{display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b;margin-bottom:8px;cursor:pointer}
+  #gate .gerr{color:#dc2626;font-size:12px;height:16px;margin-bottom:6px}
+  #gate button{width:100%;background:var(--a);border:none;color:#fff;font-size:14.5px;font-weight:700;border-radius:10px;padding:10px;cursor:pointer;font-family:inherit}
+  #gate button:hover{background:#1d4ed8}
+  body.locked .topbar,body.locked .viewport,body.locked .navbtn,body.locked .pager{visibility:hidden}
+
+  @media (max-width:760px){
+    .topbar .brand span{display:none}
+    .navbtn{width:36px;height:36px}
+    .row{gap:14px}
+    .rows{gap:56px}
+    .node{width:200px}
+    .topbar .btns button b{display:none}
+  }
+  @media print{
+    body{overflow:visible;background:#fff}
+    .topbar,.navbtn,.pager,.exp{display:none!important}
+    .viewport{position:static;overflow:visible}
+    .panels{display:block;transform:none!important;height:auto}
+    .panel{display:block;height:auto;overflow:visible;page-break-before:auto}
+    .sysbox{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate" hidden>
+  <div class="gcard" id="gcard">
+    <div class="glogo"></div>
+    <h1>公司股权关系图谱</h1>
+    <p class="gsub">内部资料 · 请登录后查看</p>
+    <input class="gi" id="gu" placeholder="账号" autocomplete="username">
+    <input class="gi" id="gp" type="password" placeholder="密码" autocomplete="current-password">
+    <label class="grem"><input type="checkbox" id="gr">记住我（本机长期免登录）</label>
+    <div class="gerr" id="ge"></div>
+    <button id="gb">登 录</button>
+  </div>
+</div>
+
+<!-- 顶部一条状态栏 -->
+<header class="topbar">
+  <div class="brand"><span>公司股权关系图谱</span></div>
+  <nav id="topnav">
+    <a data-goto="overview" class="on">总览</a>
+    <a data-goto="sysA"><span class="dot" style="background:#2563EB"></span>A 可信智能系</a>
+    <a data-goto="sysB"><span class="dot" style="background:#16A34A"></span>B 深度垂域系</a>
+    <a data-goto="sysC"><span class="dot" style="background:#DB2777"></span>C 北京灵深</a>
+    <a data-goto="sysD"><span class="dot" style="background:#7C3AED"></span>D 中工灵智</a>
+    <a data-goto="sysE"><span class="dot" style="background:#D97706"></span>E 元复智生</a>
+    <a data-goto="sysF"><span class="dot" style="background:#0D9488"></span>F 长沙研恒域</a>
+    <a data-goto="persons">关键人物</a>
+    <a data-goto="table">速查表</a>
+    <a data-goto="notes">数据说明</a>
+  </nav>
+  <div class="btns">
+    <button id="btnPng">📷 <b>PNG</b></button>
+    <button id="btnPdf">📄 <b>PDF</b></button>
+  </div>
+</header>
+
+<!-- 左右切换面板 -->
+<div class="viewport"><div class="panels" id="panels">
+
+  <!-- ============ 1 总览 ============ -->
+  <section class="panel" id="overview">
+    <h2 class="sec"><span class="no" style="background:#0f172a">总</span>体系总览</h2>
+    <p class="secdesc">共 <b>6</b> 大体系 · <b>23</b> 家主体：A、B 为业务主线（测评 / AI 医疗），C–F 为新设主体。</p>
+    <div class="panorama">
+      <h3>全局全景图 · 六体系与跨体系持股</h3>
+      <svg viewBox="0 0 1180 540" xmlns="http://www.w3.org/2000/svg" font-family="inherit" style="max-width:1020px;margin:0 auto;display:block"><rect x="20" y="40" width="560" height="262" rx="12" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5"/><rect x="600" y="40" width="560" height="262" rx="12" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1.5"/><rect x="20" y="372" width="280" height="150" rx="12" fill="#FDF2F8" stroke="#F9A8D4" stroke-width="1.5"/><rect x="315" y="372" width="280" height="150" rx="12" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/><rect x="610" y="372" width="270" height="150" rx="12" fill="#FFFBEB" stroke="#FCD34D" stroke-width="1.5"/><rect x="895" y="372" width="265" height="150" rx="12" fill="#F0FDFA" stroke="#5EEAD4" stroke-width="1.5"/><text x="36" y="64" font-size="12.5" fill="#2563EB" text-anchor="start" font-weight="800">A · 可信智能系 — 测评业务</text><rect x="40" y="78" width="64" height="22" rx="9" fill="#fff" stroke="#93C5FD" stroke-width="1.2" /><text x="72.0" y="93" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">洛克思</text><rect x="118" y="78" width="44" height="22" rx="9" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.2" /><text x="140.0" y="93" font-size="11" fill="#92400E" text-anchor="middle" font-weight="400">王烁</text><rect x="176" y="78" width="88" height="22" rx="9" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="3 2"/><text x="220.0" y="93" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400">无锡产研院</text><rect x="70" y="130" width="140" height="22" rx="9" fill="#2563EB" stroke="#93C5FD" stroke-width="1.2" stroke-width="2"/><text x="140.0" y="145" font-size="11" fill="#fff" text-anchor="middle" font-weight="400">可信智能（无锡）</text><rect x="36" y="182" width="76" height="22" rx="9" fill="#fff" stroke="#93C5FD" stroke-width="1.2" /><text x="74.0" y="197" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">深智引擎</text><rect x="140" y="182" width="96" height="22" rx="9" fill="#fff" stroke="#93C5FD" stroke-width="1.2" /><text x="188.0" y="197" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">上海智达信</text><rect x="140" y="234" width="100" height="22" rx="9" fill="#fff" stroke="#93C5FD" stroke-width="1.2" /><text x="190.0" y="249" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">垂域模盾（沪）</text><rect x="280" y="234" width="92" height="22" rx="9" fill="#fff" stroke="#93C5FD" stroke-width="1.2" /><text x="326.0" y="249" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">垂域模盾（京）</text><path d="M72 100 V115 H125 V130" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-opacity=".55"/><path d="M140 100 V130" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-opacity=".55"/><path d="M220 100 V115 H155 V130" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-opacity=".55"/><path d="M140 152 V167 H74 V182" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-opacity=".55"/><path d="M140 152 V167 H188 V182" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-opacity=".55"/><path d="M188 204 V234" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-opacity=".55"/><path d="M240 245 H280" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-opacity=".55"/><text x="88" y="111" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">59%</text><text x="146" y="117" font-size="10" font-weight="700" fill="#334155" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="3">40%</text><text x="194" y="111" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">1%</text><text x="96" y="163" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">100%</text><text x="178" y="176" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">57.14%</text><text x="194" y="222" font-size="10" font-weight="700" fill="#334155" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="3">100%</text><text x="260" y="240" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">100%</text><text x="616" y="64" font-size="12.5" fill="#16A34A" text-anchor="start" font-weight="800">B · 深度垂域系 — AI 健康 / 医疗</text><rect x="616" y="78" width="44" height="22" rx="9" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.2" /><text x="638.0" y="93" font-size="11" fill="#92400E" text-anchor="middle" font-weight="400">李慧</text><rect x="680" y="78" width="80" height="22" rx="9" fill="#fff" stroke="#86EFAC" stroke-width="1.2" /><text x="720.0" y="93" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">兰致矩阵</text><rect x="776" y="78" width="44" height="22" rx="9" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.2" /><text x="798.0" y="93" font-size="11" fill="#92400E" text-anchor="middle" font-weight="400">刘艳</text><rect x="660" y="130" width="150" height="22" rx="9" fill="#16A34A" stroke="#86EFAC" stroke-width="1.2" stroke-width="2"/><text x="735.0" y="145" font-size="11" fill="#fff" text-anchor="middle" font-weight="400">深度垂域（上海）</text><rect x="616" y="182" width="96" height="22" rx="9" fill="#fff" stroke="#86EFAC" stroke-width="1.2" /><text x="664.0" y="197" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">上海灵动能知</text><rect x="730" y="182" width="104" height="22" rx="9" fill="#fff" stroke="#86EFAC" stroke-width="1.2" /><text x="782.0" y="197" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">长沙深度垂域</text><rect x="852" y="182" width="84" height="22" rx="9" fill="#fff" stroke="#86EFAC" stroke-width="1.2" /><text x="894.0" y="197" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">垂直智能</text><rect x="952" y="182" width="104" height="22" rx="9" fill="#fff" stroke="#86EFAC" stroke-width="1.2" /><text x="1004.0" y="197" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">深度垂域（蒙）</text><path d="M638 100 V115 H720 V130" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-opacity=".55"/><path d="M720 100 V130" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-opacity=".55"/><path d="M798 100 V115 H755 V130" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-opacity=".55"/><path d="M735 152 V167 H664 V182" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-opacity=".55"/><path d="M735 152 V167 H782 V182" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-opacity=".55"/><path d="M735 152 V167 H894 V182" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-opacity=".55"/><path d="M735 152 V167 H1004 V182" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-opacity=".55"/><text x="660" y="111" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">40%</text><text x="726" y="117" font-size="10" font-weight="700" fill="#334155" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="3">40%</text><text x="790" y="111" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">20%</text><text x="686" y="163" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">100%</text><text x="760" y="163" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">100%</text><text x="816" y="163" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">77.78%</text><text x="964" y="163" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">51%</text><text x="34" y="396" font-size="12.5" fill="#DB2777" text-anchor="start" font-weight="800">C · 北京灵深</text><rect x="32" y="414" width="84" height="22" rx="9" fill="#fff" stroke="#F9A8D4" stroke-width="1.2" /><text x="74.0" y="429" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">海南新创致益</text><rect x="130" y="414" width="80" height="22" rx="9" fill="#fff" stroke="#F9A8D4" stroke-width="1.2" /><text x="170.0" y="429" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">上海明合源</text><rect x="68" y="464" width="100" height="22" rx="9" fill="#DB2777" stroke="#F9A8D4" stroke-width="1.2" stroke-width="2"/><text x="118.0" y="479" font-size="11" fill="#fff" text-anchor="middle" font-weight="400">北京灵深</text><path d="M74 436 V450 H105 V464" fill="none" stroke="#DB2777" stroke-width="1.5" stroke-opacity=".55"/><path d="M170 436 V450 H135 V464" fill="none" stroke="#DB2777" stroke-width="1.5" stroke-opacity=".55"/><text x="84" y="449" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">51%</text><text x="158" y="449" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">46%</text><text x="329" y="396" font-size="12.5" fill="#7C3AED" text-anchor="start" font-weight="800">D · 中工灵智</text><rect x="327" y="414" width="88" height="22" rx="9" fill="#fff" stroke="#C4B5FD" stroke-width="1.2" /><text x="371.0" y="429" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">上海合信方略</text><rect x="433" y="414" width="88" height="22" rx="9" fill="#fff" stroke="#C4B5FD" stroke-width="1.2" /><text x="477.0" y="429" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">云序启新</text><rect x="363" y="464" width="100" height="22" rx="9" fill="#7C3AED" stroke="#C4B5FD" stroke-width="1.2" stroke-width="2"/><text x="413.0" y="479" font-size="11" fill="#fff" text-anchor="middle" font-weight="400">中工灵智</text><path d="M371 436 V450 H405 V464" fill="none" stroke="#7C3AED" stroke-width="1.5" stroke-opacity=".55"/><path d="M477 436 V450 H425 V464" fill="none" stroke="#7C3AED" stroke-width="1.5" stroke-opacity=".55"/><text x="381" y="449" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">80%</text><text x="458" y="449" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">10%</text><text x="624" y="396" font-size="12.5" fill="#D97706" text-anchor="start" font-weight="800">E · 上海元复智生</text><rect x="626" y="414" width="88" height="22" rx="9" fill="#fff" stroke="#FCD34D" stroke-width="1.2" /><text x="670.0" y="429" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">舟行听澜</text><rect x="730" y="414" width="88" height="22" rx="9" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="3 2"/><text x="774.0" y="429" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400">北京三千视界</text><rect x="660" y="464" width="100" height="22" rx="9" fill="#D97706" stroke="#FCD34D" stroke-width="1.2" stroke-width="2"/><text x="710.0" y="479" font-size="11" fill="#fff" text-anchor="middle" font-weight="400">上海元复智生</text><path d="M670 436 V450 H695 V464" fill="none" stroke="#D97706" stroke-width="1.5" stroke-opacity=".55"/><path d="M774 436 V450 H730 V464" fill="none" stroke="#D97706" stroke-width="1.5" stroke-opacity=".55"/><text x="678" y="449" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">51%</text><text x="756" y="449" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">49%</text><text x="909" y="396" font-size="12.5" fill="#0D9488" text-anchor="start" font-weight="800">F · 长沙研恒域</text><rect x="920" y="414" width="96" height="22" rx="9" fill="#fff" stroke="#5EEAD4" stroke-width="1.2" /><text x="968.0" y="429" font-size="11" fill="#0f172a" text-anchor="middle" font-weight="400">长沙鸿澜智汇</text><rect x="940" y="464" width="100" height="22" rx="9" fill="#0D9488" stroke="#5EEAD4" stroke-width="1.2" stroke-width="2"/><text x="990.0" y="479" font-size="11" fill="#fff" text-anchor="middle" font-weight="400">长沙研恒域</text><path d="M968 436 V464" fill="none" stroke="#0D9488" stroke-width="1.5" stroke-opacity=".55"/><text x="974" y="452" font-size="10" font-weight="700" fill="#334155" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="3">80%</text><path d="M190 256 V337 H118 V372" fill="none" stroke="#2563EB" stroke-dasharray="6 4" stroke-width="2" stroke-opacity=".9" marker-end="url(#mk-blue)"/><text x="152" y="331" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">垂域模盾 3%</text><circle cx="690" cy="302" r="3" fill="#16A34A"/><path d="M690 302 V337 H413 V372" fill="none" stroke="#16A34A" stroke-dasharray="6 4" stroke-width="2" stroke-opacity=".9" marker-end="url(#mk-green)"/><text x="552" y="331" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">兰致矩阵 10%</text><path d="M782 204 V337 H990 V372" fill="none" stroke="#16A34A" stroke-dasharray="6 4" stroke-width="2" stroke-opacity=".9" marker-end="url(#mk-green)"/><text x="886" y="331" font-size="10" font-weight="700" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">长沙深度垂域 20%</text></svg>
+      <div class="xnotes"><div class="xt">跨体系持股明细（对应图中虚线）</div><div id="crosslist"></div></div>
+      <div class="cap">每个色块为一个体系的迷你持股图（箭头与百分比 = 持股关系）· 虚线 = 跨体系持股（共 3 处）· 点击上方体系卡片可查看完整结构图</div>
+    </div>
+
+
+    <div class="sysgrid" id="sysgrid"></div>
+
+    <div class="legend">
+      <b style="font-size:12px;color:#334155">图例：</b>
+      <span class="it"><span class="nt nt-ltd">有限公司</span><span class="nt nt-lp">有限合伙</span><span class="nt nt-psn">自然人</span><span class="nt nt-ext">外部机构</span>＝公司性质</span>
+      <span class="it"><span class="lg core"></span>核心公司</span>
+      <span class="it"><span class="lg"></span>体系内公司</span>
+      <span class="it"><span class="lg pt"></span>合伙企业（持股平台）</span>
+      <span class="it"><span class="lg psn"></span>自然人股东</span>
+      <span class="it"><span class="lg ext"></span>外部机构股东</span>
+      <span class="it"><span class="lg x"></span>跨体系持股（角标为所属体系）</span>
+      <span class="it">箭头 = 持股方向；卡片顶部百分比胶囊 = 上方股东持股比例</span>
+      <span class="it">🖱 点击任意公司卡片，可高亮它在各体系与速查表中的全部出现位置</span>
+    </div>
+  </section>
+
+  <!-- 体系结构图面板（由 app.js 渲染） -->
+  <div id="sections" style="display:contents"></div>
+
+  <!-- ============ 关键人物 ============ -->
+  <section class="panel" id="persons">
+    <h2 class="sec"><span class="no" style="background:#0f172a">人</span>关键人物</h2>
+    <p class="secdesc">按负责人聚合：每位自然人担任法人 / 执行事务合伙人的公司一览，便于理解体系的实际管理结构（彩色圆点为公司所属体系）。</p>
+    <div class="pgrid" id="pgrid"></div>
+    <p id="pnote"></p>
+  </section>
+
+  <!-- ============ 速查表 ============ -->
+  <section class="panel" id="table">
+    <h2 class="sec"><span class="no" style="background:#0f172a">表</span>公司速查表</h2>
+    <p class="secdesc">23 家公司 / 主体的工商登记信息，支持关键词搜索与按性质、体系筛选。「—」表示暂无数据。</p>
+    <div class="toolrow">
+      <input id="q" type="search" placeholder="🔍 关键词，如：无锡、王媛媛、2026…">
+      <select id="fNature" class="fsel">
+        <option value="">全部性质</option>
+        <option value="ltd">有限公司</option>
+        <option value="lp">有限合伙</option>
+      </select>
+      <select id="fSys" class="fsel">
+        <option value="">全部体系</option>
+        <option value="A">A 可信智能系</option>
+        <option value="B">B 深度垂域系</option>
+        <option value="C">C 北京灵深</option>
+        <option value="D">D 中工灵智</option>
+        <option value="E">E 上海元复智生</option>
+        <option value="F">F 长沙研恒域</option>
+        <option value="X">其他</option>
+      </select>
+      <span id="qinfo">共 23 条</span>
+    </div>
+    <div class="tablewrap">
+    <table id="tbl">
+      <thead><tr>
+        <th class="no">#</th><th>公司 / 主体</th><th>体系</th><th>地区</th><th>统一社会信用代码</th><th>法人 / 执行事务合伙人</th><th>注册资本<br>（万元）</th><th>成立时间</th><th>纳税类型</th><th>注册地址</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ============ 数据说明 ============ -->
+  <section class="panel" id="notes">
+    <h2 class="sec"><span class="no" style="background:#0f172a">注</span>数据说明</h2>
+    <div class="notes">
+      <ol>
+        <li>数据来源：《公司记录详情.xlsx》工商登记记录与《公司关系图.drawio》，并已与天眼查公开工商信息逐项核对（2026-08-30）。各公司持股比例均核对合计 100%。</li>
+        <li>已修正关系图笔误：「上海兰致矩阵阵阵科技中心」更正为「上海兰致矩阵科技中心」（91310113MAEL9E1F82）；执行事务合伙人「孙士峰」以「孙士锋」为准。</li>
+        <li>云序启新合伙人：关系图除「合信方略 90% + 李慧 10%」外另列「陈嫣然 32.5%」，合计超 100%，判断为誊抄笔误，未采用。</li>
+        <li>长沙研恒域执行事务合伙人已经天眼查核实为「长沙深度垂域智能科技有限公司」（登记表所记「代晨鸿」有误；代晨鸿实为长沙鸿澜智汇的执行事务合伙人）。</li>
+        <li>上海智达信成立日期已经天眼查核实为 2025-07-11（登记表 Sheet3 所记 07-18 有误）。</li>
+        <li>海南新创致益设立于 2022-01-19，曾用名「海南新创致益私募股权投资基金合伙企业（有限合伙）」；当前注册地址为三亚（关系图所载海口地址应为变更前地址）。</li>
+        <li>股权关系经天眼查补充：垂域模盾（北京）为上海垂域模盾 100% 子公司（并入 A 系）；深度垂域（内蒙古）由深度垂域（上海）持股 51%、云序嘉投（海南）投资有限公司持股 49%（并入 B 系）。</li>
+        <li>上海思云图（法人李志）股权关系待确认，暂列「其他」。</li>
+        <li>维护说明：公司数据与持股关系统一存放在 <b>data.js</b>，股权变动时只需修改该文件，页面自动渲染，无需改动代码。</li>
+      </ol>
+    </div>
+    <footer>内部资料 · 仅供参考 · 整理自《公司记录详情》《公司关系图》与天眼查公开信息 · 2026-08-30</footer>
+  </section>
+
+</div></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="mk-blue"   viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#2563EB"/></marker>
+  <marker id="mk-green"  viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#16A34A"/></marker>
+  <marker id="mk-rose"   viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#DB2777"/></marker>
+  <marker id="mk-violet" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#7C3AED"/></marker>
+  <marker id="mk-amber"  viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#D97706"/></marker>
+  <marker id="mk-teal"   viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#0D9488"/></marker>
+</defs></svg>
+
+<button class="navbtn prev" id="btnPrev" title="上一板块">‹</button>
+<button class="navbtn next" id="btnNext" title="下一板块">›</button>
+<div class="pager" id="pager">1 / 10</div>
+
+
+<script>
+/* 登录门：admin / 88888888 */
+(function(){
+  var gate=document.getElementById('gate'),card=document.getElementById('gcard'),
+      gu=document.getElementById('gu'),gp=document.getElementById('gp'),
+      gr=document.getElementById('gr'),ge=document.getElementById('ge'),gb=document.getElementById('gb');
+  var ok=sessionStorage.getItem('cg_auth')==='1'||localStorage.getItem('cg_auth')==='1';
+  if(!ok){document.body.classList.add('locked');gate.hidden=false;setTimeout(function(){gu.focus()},50)}
+  function tryLogin(){
+    if(gu.value.trim()==='admin'&&gp.value==='88888888'){
+      (gr.checked?localStorage:sessionStorage).setItem('cg_auth','1');
+      document.body.classList.remove('locked');gate.hidden=true;
+    }else{
+      ge.textContent='账号或密码错误，请重试';
+      card.classList.remove('err');void card.offsetWidth;card.classList.add('err');
+      gp.value='';
+    }
+  }
+  gb.addEventListener('click',tryLogin);
+  [gu,gp].forEach(function(i){i.addEventListener('keydown',function(e){if(e.key==='Enter')tryLogin()})});
+})();
+</script>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
